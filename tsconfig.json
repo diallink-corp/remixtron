@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "noUnusedLocals": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "~/*": ["./template/app/*"]
+    }
+  },
+  "exclude": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.cache/**"]
+}

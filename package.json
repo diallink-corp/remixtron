@@ -1,0 +1,89 @@
+{
+  "name": "@inperium-corp/remixtron",
+  "version": "0.0.1-alpha.0",
+  "author": "Inperium Corp",
+  "description": "Electron integration for Remix",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "repository": "https://github.com/inperium-corp/remixtron",
+  "types": "./dist/main.d.ts",
+  "main": "./dist/main.js",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup-node src/main.ts --target node16 --format cjs --dts --sourcemap",
+    "build-watch": "pnpm build -- --watch",
+    "lint": "eslint --ext js,ts,tsx .",
+    "lint-fix": "pnpm lint -- --fix",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm build && vitest --no-watch",
+    "test-dev": "run-p --print-label --race vitest-ui build-watch",
+    "vitest-ui": "vitest --ui",
+    "release": "release-it"
+  },
+  "dependencies": {
+    "@types/mime": "^2.0.3",
+    "@types/node": "*",
+    "@types/react": "*",
+    "@types/react-dom": "*",
+    "fast-glob": "^3.2.11",
+    "mime": "^3.0.0",
+    "zod": "^3.14.4"
+  },
+  "peerDependencies": {
+    "@remix-run/node": ">=1.4.0",
+    "@remix-run/server-runtime": ">=1.4.0",
+    "electron": ">=16",
+    "react": ">=17",
+    "react-dom": ">=17"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.21.0",
+    "@remix-run/dev": "^1.4.0",
+    "@remix-run/node": "^1.4.0",
+    "@remix-run/server-runtime": "^1.4.0",
+    "@typescript-eslint/eslint-plugin": "^5.19.0",
+    "@typescript-eslint/parser": "^5.19.0",
+    "@vitest/ui": "^0.9.3",
+    "electron": "^18.0.4",
+    "esbuild": "^0.14.36",
+    "eslint": "^8.13.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-import-resolver-typescript": "^2.7.1",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-jsx-a11y": "^6.5.1",
+    "eslint-plugin-prettier": "^4.0.0",
+    "eslint-plugin-react": "^7.29.4",
+    "eslint-plugin-react-hooks": "^4.4.0",
+    "eslint-plugin-unicorn": "^42.0.0",
+    "execa": "^6.1.0",
+    "npm-run-all": "^4.1.5",
+    "playwright": "^1.21.0",
+    "prettier": "^2.8.8",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "release-it": "^14.14.2",
+    "tsup": "^5.12.5",
+    "typescript": "^4.6.3",
+    "vite": "^2.9.5",
+    "vitest": "^0.9.3"
+  },
+  "release-it": {
+    "git": {
+      "commitMessage": "v${version}",
+      "commit": true,
+      "tag": true,
+      "push": true
+    },
+    "npm": {
+      "publish": true,
+      "skipChecks": true
+    },
+    "github": {
+      "release": true,
+      "web": true
+    }
+  }
+}
