@@ -1,6 +1,6 @@
 {
   "name": "@inperium-corp/remixtron",
-  "version": "0.0.1-alpha.0",
+  "version": "0.0.1",
   "author": "Inperium Corp",
   "description": "Electron integration for Remix",
   "license": "SEE LICENSE IN LICENSE.md",
