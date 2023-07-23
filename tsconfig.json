@@ -1,12 +1,14 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "ESNext",
     "esModuleInterop": true,
     "noUnusedLocals": true,
     "jsx": "react-jsx",
     "paths": {
       "~/*": ["./template/app/*"]
-    }
+    },
+    "moduleResolution": "node",
+    "lib": ["DOM", "DOM.Iterable", "ES2019", "ESNext"]
   },
-  "exclude": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.cache/**"]
+  "exclude": ["**/dist/**", "**/build/**", "**/.cache/**"]
 }

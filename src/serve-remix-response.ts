@@ -1,64 +1,35 @@
-import type { RequestHandler } from '@remix-run/server-runtime';
+import type { AppLoadContext, RequestHandler } from '@remix-run/server-runtime';
 import './browser-globals';
 
-import { session } from 'electron';
+import { Readable } from 'node:stream';
 
-function isRawData(data: Electron.UploadData) {
-  return 'type' in data && data.type === 'rawData';
-}
-
-function isBlobData(data: Electron.UploadData) {
-  return 'type' in data && data.type === 'blob';
-}
+import { ReadableStream } from '@remix-run/web-stream';
 
 export async function serveRemixResponse(
-  request: Electron.ProtocolRequest,
+  request: Request,
   handleRequest: RequestHandler,
-  context: unknown
-): Promise<Electron.ProtocolResponse> {
-  let body: Buffer | undefined = undefined;
-
-  if (request.uploadData) {
-    const init = await Promise.all(
-      request.uploadData
-        .filter(isBlobData)
-        .map(
-          async ({ blobUUID }): Promise<[string, Buffer]> => [
-            blobUUID,
-            await session.defaultSession.getBlobData(blobUUID)
-          ]
-        )
-    );
-
-    const blobs = new Map(init);
-
-    body = Buffer.concat(
-      request.uploadData.map((data) =>
-        isRawData(data) ? data.bytes : blobs.get(data.blobUUID)
-      )
-    );
+  context: AppLoadContext | undefined
+): Promise<Response> {
+  request.headers.append('referer', request.referrer);
+  const response = await handleRequest(request, context);
+  if (response.body instanceof ReadableStream) {
+    // TODO: What is wrong with types?
+    // @ts-expect-error
+    return new Response(Readable.toWeb(Readable.from(response.body)), {
+      headers: response.headers,
+      status: response.status,
+      statusText: response.statusText
+    });
   }
 
-  const remixHeaders = new Headers(request.headers);
-  remixHeaders.append('Referer', request.referrer);
-
-  const remixRequest = new Request(request.url, {
-    method: request.method,
-    headers: remixHeaders,
-    body
-  });
-
-  const response = await handleRequest(remixRequest, context);
-
-  const headers: Record<string, string[]> = {};
-  response.headers.forEach((value, key) => {
-    const values = (headers[key] ??= []);
-    values.push(value);
-  });
-
-  return {
-    data: Buffer.from(await response.arrayBuffer()),
-    headers,
-    statusCode: response.status
-  };
+  return new Response(
+    // TODO: What is wrong with types?
+    // @ts-expect-error
+    Readable.toWeb(Readable.from(Buffer.from(await response.arrayBuffer()))),
+    {
+      headers: response.headers,
+      status: response.status,
+      statusText: response.statusText
+    }
+  );
 }

@@ -1,10 +1,15 @@
-import type { RequestHandler, ServerBuild } from '@remix-run/server-runtime';
+import type {
+  AppLoadContext,
+  RequestHandler,
+  ServerBuild
+} from '@remix-run/server-runtime';
 import './browser-globals';
 
 import { app, protocol, session } from 'electron';
 import { stat } from 'node:fs/promises';
 import cookieParser from 'set-cookie-parser';
 
+import { Response } from '@remix-run/node';
 import { createRequestHandler } from '@remix-run/server-runtime';
 
 import { asAbsolutePath } from './as-absolute-path';
@@ -15,8 +20,8 @@ import type { AssetFile } from './asset-files';
 const defaultMode = app.isPackaged ? 'production' : process.env.NODE_ENV;
 
 export type GetLoadContextFunction = (
-  request: Electron.ProtocolRequest
-) => unknown;
+  request: Request
+) => AppLoadContext | undefined | Promise<AppLoadContext | undefined>;
 
 export type InitRemixOptions = {
   /**
@@ -56,10 +61,7 @@ export async function initRemix({
       ? require(serverBuildOption)
       : serverBuildOption;
 
-  let [assetFiles] = await Promise.all([
-    collectAssetFiles(publicFolder),
-    app.whenReady()
-  ]);
+  let assetFiles = await collectAssetFiles(publicFolder);
 
   let lastBuildTime = 0;
   const buildPath =
@@ -67,12 +69,8 @@ export async function initRemix({
       ? require.resolve(serverBuildOption)
       : undefined;
 
-  protocol.interceptBufferProtocol('http', async (request, callback) => {
+  protocol.handle('http', async (request) => {
     try {
-      if (mode === 'development') {
-        assetFiles = await collectAssetFiles(publicFolder);
-      }
-
       let buildTime = 0;
       if (mode === 'development' && buildPath !== undefined) {
         const buildStat = await stat(buildPath);
@@ -96,16 +94,18 @@ export async function initRemix({
         cache: true
       });
 
-      for (const cookie of await requestSession.cookies.get({
+      let cookie = request.headers.get('cookie');
+      for (const sessionCookie of await requestSession.cookies.get({
         url: request.url
       })) {
-        if (request.headers['Cookie']?.length) {
-          request.headers['Cookie'] += '; ';
+        if (cookie?.length) {
+          cookie += '; ';
         } else {
-          request.headers['Cookie'] = '';
+          cookie = '';
         }
-        request.headers['Cookie'] += `${cookie.name}=${cookie.value}`;
+        cookie += `${sessionCookie.name}=${sessionCookie.value}`;
       }
+      request.headers.set('cookie', cookie);
 
       const response = await handleRequest(
         request,
@@ -116,36 +116,33 @@ export async function initRemix({
 
       const url = new URL(request.url);
 
-      for (const cookieHeader of response.headers?.['set-cookie'] || []) {
-        const cookies = cookieParser.parse(cookieHeader);
+      const setCookie = cookieParser.parse(response.headers.get('set-cookie'));
+      for (const cookie of setCookie) {
+        let sameSite = cookie.sameSite?.toLowerCase();
+        if (sameSite === 'none') {
+          sameSite = 'no_restriction';
+        }
 
-        for (const cookie of cookies) {
-          let sameSite = cookie.sameSite?.toLowerCase();
-          if (sameSite === 'none') {
-            sameSite = 'no_restriction';
-          }
+        const cookieObj = {
+          ...cookie,
+          domain: cookie.domain ?? url.host,
+          url: url.href,
+          sameSite: sameSite
+        };
 
-          const cookieObj = {
-            ...cookie,
-            domain: cookie.domain ?? url.host,
-            url: url.href,
-            sameSite: sameSite
-          };
-
-          if (cookieObj.expires && cookieObj.expires.valueOf() < Date.now()) {
-            await requestSession.cookies.remove(cookieObj.url, cookieObj.name);
-          } else {
-            await requestSession.cookies.set(cookieObj);
-          }
+        if (cookieObj.expires && cookieObj.expires.valueOf() < Date.now()) {
+          await requestSession.cookies.remove(cookieObj.url, cookieObj.name);
+        } else {
+          await requestSession.cookies.set(cookieObj);
         }
       }
 
-      callback(response);
+      return response;
     } catch (error) {
-      console.warn('[remixtron]', error);
-      callback({
-        statusCode: 500,
-        data: `<pre>${error?.stack || error?.message || String(error)}</pre>`
+      console.warn('[remix-electron]', error);
+      const { stack, message } = toError(error);
+      return new Response(`<pre>${stack || message}</pre>`, {
+        status: 500
       });
     }
   });
@@ -156,13 +153,14 @@ export async function initRemix({
 }
 
 async function handleRequest(
-  request: Electron.ProtocolRequest,
+  request: Request,
   assetFiles: AssetFile[],
   requestHandler: RequestHandler,
-  context: unknown
-): Promise<Electron.ProtocolResponse> {
+  context: AppLoadContext | undefined
+  // TODO: What is wrong with types?
+): Promise<globalThis.Response> {
   return (
-    (await serveAsset(request, assetFiles)) ??
+    serveAsset(request, assetFiles) ??
     (await serveRemixResponse(request, requestHandler, context))
   );
 }
@@ -173,4 +171,8 @@ function purgeRequireCache(prefix: string) {
       delete require.cache[key];
     }
   }
+}
+
+function toError(value: unknown) {
+  return value instanceof Error ? value : new Error(String(value));
 }

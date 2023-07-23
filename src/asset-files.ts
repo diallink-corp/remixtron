@@ -1,11 +1,14 @@
 import glob from 'fast-glob';
 import mime from 'mime';
+import { createReadStream } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { relative } from 'node:path';
+import { Readable } from 'node:stream';
 
 export type AssetFile = {
   path: string;
   content: () => Promise<string | Buffer>;
+  stream: () => Readable;
 };
 
 export async function collectAssetFiles(folder: string): Promise<AssetFile[]> {
@@ -16,22 +19,29 @@ export async function collectAssetFiles(folder: string): Promise<AssetFile[]> {
   });
 
   return files.map((file) => ({
-    path: '/' + relative(folder, file).replace(/\\/g, '/'),
-    content: () => readFile(file)
+    path: '/' + relative(folder, file).replaceAll('\\', '/'),
+    content: () => readFile(file),
+    stream: () => createReadStream(file)
   }));
 }
 
-export async function serveAsset(
-  request: Electron.ProtocolRequest,
+export function serveAsset(
+  request: Request,
   files: AssetFile[]
-): Promise<Electron.ProtocolResponse | undefined> {
+): Response | null {
   const url = new URL(request.url);
 
   const file = files.find((file) => file.path === url.pathname);
-  if (!file) return;
+  if (!file) {
+    return null;
+  }
 
-  return {
-    data: await file.content(),
-    mimeType: mime.getType(file.path) ?? undefined
-  };
+  // TODO: What is wrong with types?
+  // @ts-expect-error
+  return new Response(Readable.toWeb(file.stream()), {
+    headers: {
+      status: 200,
+      'Content-Type': mime.getType(file.path)
+    }
+  });
 }
