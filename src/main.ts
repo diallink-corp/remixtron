@@ -5,11 +5,10 @@ import type {
 } from '@remix-run/server-runtime';
 import './browser-globals';
 
-import { app, protocol, session } from 'electron';
+import { app, session } from 'electron';
 import { stat } from 'node:fs/promises';
 import cookieParser from 'set-cookie-parser';
 
-import { Response } from '@remix-run/node';
 import { createRequestHandler } from '@remix-run/server-runtime';
 
 import { asAbsolutePath } from './as-absolute-path';
@@ -42,6 +41,12 @@ export type InitRemixOptions = {
   publicFolder?: string;
 
   /**
+   * The session partition to use.
+   * @default defaultSession
+   */
+  partition?: string;
+
+  /**
    * A function to provide a `context` object to your loaders.
    */
   getLoadContext?: GetLoadContextFunction;
@@ -51,6 +56,7 @@ export async function initRemix({
   serverBuild: serverBuildOption,
   mode = defaultMode,
   publicFolder: publicFolderOption = 'public',
+  partition,
   getLoadContext
 }: InitRemixOptions) {
   const appRoot = app.getAppPath();
@@ -69,7 +75,13 @@ export async function initRemix({
       ? require.resolve(serverBuildOption)
       : undefined;
 
-  protocol.handle('http', async (request) => {
+  const mainSession = partition
+    ? session.fromPartition(partition, {
+        cache: true
+      })
+    : session.defaultSession;
+
+  mainSession.protocol.handle('https', async (request) => {
     try {
       let buildTime = 0;
       if (mode === 'development' && buildPath !== undefined) {
@@ -90,12 +102,8 @@ export async function initRemix({
       const context = await getLoadContext?.(request);
       const requestHandler = createRequestHandler(serverBuild, mode);
 
-      const requestSession = session.fromPartition('persist:set-cookies', {
-        cache: true
-      });
-
       let cookie = request.headers.get('cookie');
-      for (const sessionCookie of await requestSession.cookies.get({
+      for (const sessionCookie of await mainSession.cookies.get({
         url: request.url
       })) {
         if (cookie?.length) {
@@ -127,13 +135,17 @@ export async function initRemix({
           ...cookie,
           domain: cookie.domain ?? url.host,
           url: url.href,
-          sameSite: sameSite
+          sameSite: sameSite,
+          expirationDate: Date.now() / 1000 + cookie.maxAge // Value must be in seconds.
         };
 
-        if (cookieObj.expires && cookieObj.expires.valueOf() < Date.now()) {
-          await requestSession.cookies.remove(cookieObj.url, cookieObj.name);
+        if (
+          cookieObj.expirationDate &&
+          cookieObj.expirationDate < Date.now() / 1000
+        ) {
+          await mainSession.cookies.remove(cookieObj.url, cookieObj.name);
         } else {
-          await requestSession.cookies.set(cookieObj);
+          await mainSession.cookies.set(cookieObj);
         }
       }
 
@@ -149,7 +161,7 @@ export async function initRemix({
 
   // the remix web socket reads the websocket host from the browser url,
   // so this _has_ to be localhost
-  return `http://localhost/`;
+  return `https://localhost/`;
 }
 
 async function handleRequest(
@@ -157,12 +169,16 @@ async function handleRequest(
   assetFiles: AssetFile[],
   requestHandler: RequestHandler,
   context: AppLoadContext | undefined
-  // TODO: What is wrong with types?
-): Promise<globalThis.Response> {
-  return (
-    serveAsset(request, assetFiles) ??
-    (await serveRemixResponse(request, requestHandler, context))
-  );
+): Promise<Response> {
+  const url = new URL(request.url);
+  if (url.hostname === 'localhost') {
+    return (
+      serveAsset(request, assetFiles) ??
+      (await serveRemixResponse(request, requestHandler, context))
+    );
+  }
+
+  return fetch(request);
 }
 
 function purgeRequireCache(prefix: string) {

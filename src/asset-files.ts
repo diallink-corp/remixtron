@@ -1,13 +1,11 @@
 import glob from 'fast-glob';
 import mime from 'mime';
 import { createReadStream } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import { relative } from 'node:path';
 import { Readable } from 'node:stream';
 
 export type AssetFile = {
   path: string;
-  content: () => Promise<string | Buffer>;
   stream: () => Readable;
 };
 
@@ -20,7 +18,6 @@ export async function collectAssetFiles(folder: string): Promise<AssetFile[]> {
 
   return files.map((file) => ({
     path: '/' + relative(folder, file).replaceAll('\\', '/'),
-    content: () => readFile(file),
     stream: () => createReadStream(file)
   }));
 }
@@ -36,9 +33,8 @@ export function serveAsset(
     return null;
   }
 
-  // TODO: What is wrong with types?
   // @ts-expect-error
-  return new Response(Readable.toWeb(file.stream()), {
+  return new Response(file.stream(), {
     headers: {
       status: 200,
       'Content-Type': mime.getType(file.path)

@@ -36,6 +36,9 @@ importers:
       '@remix-run/serve':
         specifier: ^1.19.1
         version: 1.19.1
+      '@types/node':
+        specifier: 20.4.9
+        version: 20.4.9
       '@typescript-eslint/eslint-plugin':
         specifier: ^5.19.0
         version: 5.19.0(@typescript-eslint/parser@5.19.0)(eslint@8.40.0)(typescript@4.6.3)
@@ -1067,7 +1070,7 @@ packages:
     dependencies:
       '@types/http-cache-semantics': 4.0.1
       '@types/keyv': 3.1.4
-      '@types/node': 18.16.20
+      '@types/node': 20.4.9
       '@types/responselike': 1.0.0
     dev: true
 
@@ -1089,7 +1092,7 @@ packages:
   /@types/keyv@3.1.4:
     resolution: {integrity: sha512-BQ5aZNSCpj7D6K2ksrRCTmKRLEpnPvWDiLPfoGyhZ++8YtiK9d/3DBKPJgry359X/P1PfruyYwvnvwFjuEiEIg==}
     dependencies:
-      '@types/node': 20.4.3
+      '@types/node': 20.4.9
     dev: true
 
   /@types/mime@3.0.1:
@@ -1100,8 +1103,8 @@ packages:
     resolution: {integrity: sha512-nL54VfDjThdP2UXJXZao5wp76CDiDw4zSRO8d4Tk7UgDqNKGKVEQB0/t3ti63NS+YNNkIQDvwEAF04BO+WYu7Q==}
     dev: true
 
-  /@types/node@20.4.3:
-    resolution: {integrity: sha512-Yu3+r4Mn/iY6Mf0aihncZQ1qOjOUrCiodbHHY1hds5O+7BbKp9t+Li7zLO13zO8j9L2C6euz8xsYQP0rjGvVXw==}
+  /@types/node@20.4.9:
+    resolution: {integrity: sha512-8e2HYcg7ohnTUbHk8focoklEQYvemQmu9M/f43DZVx43kHn0tE3BY/6gSDxS7k0SprtS0NHvj+L80cGLnoOUcQ==}
     dev: true
 
   /@types/parse-json@4.0.0:
@@ -1111,7 +1114,7 @@ packages:
   /@types/responselike@1.0.0:
     resolution: {integrity: sha512-85Y2BjiufFzaMIlvJDvTTB8Fxl2xfLo4HgmHzVBz08w4wDePCTjYw66PdrolO0kzli3yam/YCgRufyo1DdQVTA==}
     dependencies:
-      '@types/node': 20.4.3
+      '@types/node': 20.4.9
     dev: true
 
   /@types/semver@7.5.0:
@@ -1122,7 +1125,7 @@ packages:
     resolution: {integrity: sha512-Cn6WYCm0tXv8p6k+A8PvbDG763EDpBoTzHdA+Q/MF6H3sapGjCm9NzoaJncJS9tUKSuCoDs9XHxYYsQDgxR6kw==}
     requiresBuild: true
     dependencies:
-      '@types/node': 18.16.20
+      '@types/node': 20.4.9
     dev: true
     optional: true
 
